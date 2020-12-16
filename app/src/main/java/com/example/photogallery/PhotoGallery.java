@@ -1,14 +1,21 @@
 package com.example.photogallery;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.os.Bundle;
 import android.widget.Toast;
 
 import com.example.photogallery.api.ServiceAPI;
 import com.example.photogallery.model.FlickrPhotos;
+import com.example.photogallery.model.Photo;
+import com.example.photogallery.view.RVAdapter;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -16,7 +23,7 @@ import retrofit2.Response;
 
 public class PhotoGallery extends AppCompatActivity
 {
-    FlickrPhotos photos;
+    List<Photo> photos;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,7 +37,10 @@ public class PhotoGallery extends AppCompatActivity
         ServiceAPI.getFlickrAPI().getRecent(flickr_api_key).enqueue(new Callback<FlickrPhotos>() {
             @Override
             public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
-                photos = response.body();
+                photos = response.body().getPhotos().getPhoto();
+
+                //Создать список с изображениями
+                setRVAdapter(createImageUrls(photos));
             }
 
             @Override
@@ -38,6 +48,30 @@ public class PhotoGallery extends AppCompatActivity
                 Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    //Сформировать список url'ов изображений
+    public List<String> createImageUrls(List<Photo> photos) {
+        List<String> image_ursl = new ArrayList<>();
+        int photo_size = photos.size();
+
+        for (int i = 0; i < photo_size; i++) {
+            Photo photo = photos.get(i);
+            image_ursl.add(String.format("https://live.staticflickr.com/%s/%s_%s_w.jpg", photo.getServer(), photo.getId(), photo.getSecret()));
+        }
+
+        return image_ursl;
+    }
+
+    //Создать список и установить адаптер
+    public void setRVAdapter(List<String> image_ursl) {
+        RVAdapter adapter = new RVAdapter(this, image_ursl);
+
+        RecyclerView list_view = findViewById(R.id.recyclerView);
+        GridLayoutManager layout_manager = new GridLayoutManager(this, 3);
+
+        list_view.setLayoutManager(layout_manager);
+        list_view.setAdapter(adapter);
     }
 
     //Открыть файл
