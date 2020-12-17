@@ -26,7 +26,11 @@ import retrofit2.Response;
 
 public class PhotoGallery extends AppCompatActivity
 {
+    RVAdapter adapter;
+    RecyclerView list_view;
+
     List<Photo> photos;
+    String flickr_api_key;
 
     //Изменить главное меню
     @Override
@@ -41,6 +45,7 @@ public class PhotoGallery extends AppCompatActivity
             //Сработает при отправке введенного текста
             @Override
             public boolean onQueryTextSubmit(String query) {
+                getSearchPhotosFromFlickr(query);
                 return true;
             }
 
@@ -60,16 +65,48 @@ public class PhotoGallery extends AppCompatActivity
         setContentView(R.layout.gallery_activity);
 
         //Прочитать с локального файла api_key для запросов на flickr.com
-        String flickr_api_key = readFile("flickr_api_key.txt");
+        flickr_api_key = readFile("flickr_api_key.txt");
 
-        //Асинхронный запрос на flickr.com
+        adapter = new RVAdapter(this);
+        list_view = findViewById(R.id.recyclerView);
+
+        GridLayoutManager layout_manager = new GridLayoutManager(this, 3);
+
+        list_view.setLayoutManager(layout_manager);
+        list_view.setAdapter(adapter);
+
+        getPhotosFromFlickr();
+    }
+
+    //Асинхронный запрос на flickr.com для получения общедоступных изображений
+    public void getPhotosFromFlickr() {
         ServiceAPI.getFlickrAPI().getRecent(flickr_api_key).enqueue(new Callback<FlickrPhotos>() {
             @Override
             public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
                 photos = response.body().getPhotos().getPhoto();
 
-                //Создать список с изображениями
-                setRVAdapter(createImageUrls(photos));
+                //Обновить список с изображениями
+                adapter.setContent(createImageUrls(photos));
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onFailure(Call<FlickrPhotos> call, Throwable t) {
+                Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    //Асинхронный запрос на flickr.com для получения общедоступных изображений, чьи атрибуты совпадают с введенным текстом
+    public void getSearchPhotosFromFlickr(String text) {
+        ServiceAPI.getFlickrAPI().getSearchPhotos(flickr_api_key, text).enqueue(new Callback<FlickrPhotos>() {
+            @Override
+            public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
+                photos = response.body().getPhotos().getPhoto();
+
+                //Обновить список с изображениями
+                adapter.setContent(createImageUrls(photos));
+                adapter.notifyDataSetChanged();
             }
 
             @Override
@@ -90,17 +127,6 @@ public class PhotoGallery extends AppCompatActivity
         }
 
         return image_ursl;
-    }
-
-    //Создать список и установить адаптер
-    public void setRVAdapter(List<String> image_ursl) {
-        RVAdapter adapter = new RVAdapter(this, image_ursl);
-
-        RecyclerView list_view = findViewById(R.id.recyclerView);
-        GridLayoutManager layout_manager = new GridLayoutManager(this, 3);
-
-        list_view.setLayoutManager(layout_manager);
-        list_view.setAdapter(adapter);
     }
 
     //Открыть файл
