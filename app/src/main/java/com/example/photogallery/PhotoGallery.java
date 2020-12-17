@@ -1,10 +1,13 @@
 package com.example.photogallery;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.example.photogallery.api.ServiceAPI;
@@ -24,6 +27,32 @@ import retrofit2.Response;
 public class PhotoGallery extends AppCompatActivity
 {
     List<Photo> photos;
+
+    //Изменить главное меню
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        MenuItem menuItem = menu.findItem(R.id.app_bar_search);
+        SearchView searchView = (SearchView) menuItem.getActionView();
+
+        //Прослушивать элемент поиска
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            //Сработает при отправке введенного текста
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return true;
+            }
+
+            //Сработает при вводе текста
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
+
+        return true;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
