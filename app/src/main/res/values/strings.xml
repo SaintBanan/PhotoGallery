@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PhotoGallery</string>
+    <string name="full_photo_error_message">Json-photo data not available</string>
 </resources>
