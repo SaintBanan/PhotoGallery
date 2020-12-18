@@ -2,7 +2,6 @@ package com.example.photogallery.model;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
-import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import com.google.gson.annotations.SerializedName;
@@ -17,23 +16,26 @@ public class Photo
     private String secret;
     private String server;
     private String title;
-    private int is_public;
-    private int is_friend;
-    private int is_family;
     private int farm;
+    private int isFamily;
+    private int isPublic;
+    private int isFriend;
+    private boolean isDb;
 
-    @Ignore
-    public Photo() {}
+    public Photo() {
+        this("", "", "", "", "", 0, 0, 0, false);
+    }
 
-    public Photo(String id, String owner, String secret, String server, String title, int is_family, int is_friend, int is_public) {
+    public Photo(String id, String owner, String secret, String server, String title, int isFamily, int isFriend, int isPublic, boolean isDb) {
         setId(id);
         setOwner(owner);
         setSecret(secret);
         setServer(server);
         setTitle(title);
-        setIs_family(is_family);
-        setIs_friend(is_friend);
-        setIs_public(is_public);
+        setIsFamily(isFamily);
+        setIsFriend(isFriend);
+        setIsPublic(isPublic);
+        setIsDb(isDb);
     }
 
     public String getId() {
@@ -90,31 +92,39 @@ public class Photo
         this.title = title;
     }
 
-    public int getIs_public() {
-        return is_public;
+    public int getIsPublic() {
+        return isPublic;
     }
 
     @SerializedName("ispublic")
-    public void setIs_public(int is_public) {
-        this.is_public = is_public;
+    public void setIsPublic(int isPublic) {
+        this.isPublic = isPublic;
     }
 
-    public int getIs_friend() {
-        return is_friend;
+    public int getIsFriend() {
+        return isFriend;
     }
 
     @SerializedName("isfriend")
-    public void setIs_friend(int is_friend) {
-        this.is_friend = is_friend;
+    public void setIsFriend(int isFriend) {
+        this.isFriend = isFriend;
     }
 
-    public int getIs_family() {
-        return is_family;
+    public int getIsFamily() {
+        return isFamily;
     }
 
     @SerializedName("isfamily")
-    public void setIs_family(int is_family) {
-        this.is_family = is_family;
+    public void setIsFamily(int isFamily) {
+        this.isFamily = isFamily;
+    }
+
+    public boolean getIsDb() {
+        return isDb;
+    }
+
+    public void setIsDb(boolean isDb) {
+        this.isDb = isDb;
     }
 
     //Получить url изображения
