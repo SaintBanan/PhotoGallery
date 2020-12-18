@@ -9,24 +9,23 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.photogallery.PhotoGallery;
 import com.example.photogallery.R;
+import com.example.photogallery.model.Photo;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ViewHolder> {
-    private List<String> image_urls;
+    private List<Photo> photos;
     private Context context;
+    private PhotoGallery photo_gallery;
 
-    public RVAdapter(Context context) {
+    public RVAdapter(Context context, PhotoGallery photo_gallery) {
         this.context = context;
-        this.image_urls = new ArrayList<>();
-    }
-
-    public RVAdapter(Context context, List<String> image_urls) {
-        this.context = context;
-        this.image_urls = image_urls;
+        this.photo_gallery = photo_gallery;
+        this.photos = new ArrayList<>();
     }
 
     @Override
@@ -37,20 +36,24 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull RVAdapter.ViewHolder holder, int position) {
+        holder.itemView.setTag(position);
+        holder.itemView.setOnClickListener(onClickListener);
+
         //Получить асинхронно изображение по url'у
         Picasso.with(context)
-                .load(image_urls.get(position))
+                .load(photos.get(position).getPhotoUrl())
                 .into(holder.image_view);
     }
 
     @Override
     public int getItemCount() {
-        return image_urls.size();
+        return photos.size();
     }
 
-    //Установить список url'ов изображений
-    public void setContent(List<String> image_urls) {
-        this.image_urls = image_urls;
+    //Обновить список изображений
+    public void updatePhotoList(List<Photo> photos) {
+        this.photos = photos;
+        notifyDataSetChanged();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
@@ -61,4 +64,9 @@ public class RVAdapter extends RecyclerView.Adapter<RVAdapter.ViewHolder> {
             image_view = view.findViewById(R.id.imageView);
         }
     }
+
+    //Обработчик нажатия на элемент списка
+    final private View.OnClickListener onClickListener = view -> {
+        photo_gallery.onClick(view);
+    };
 }

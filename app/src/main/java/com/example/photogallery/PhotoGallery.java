@@ -5,29 +5,32 @@ import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import com.example.photogallery.api.ServiceAPI;
+import com.example.photogallery.db.PhotosDB;
 import com.example.photogallery.model.FlickrPhotos;
 import com.example.photogallery.model.Photo;
 import com.example.photogallery.view.RVAdapter;
+import com.google.gson.Gson;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class PhotoGallery extends AppCompatActivity
+public class PhotoGallery extends AppCompatActivity implements View.OnClickListener
 {
     RVAdapter adapter;
     RecyclerView list_view;
+
+    PhotosDB photos_db;
 
     List<Photo> photos;
     String flickr_api_key;
@@ -51,9 +54,7 @@ public class PhotoGallery extends AppCompatActivity
 
             //Сработает при вводе текста
             @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
-            }
+            public boolean onQueryTextChange(String newText) { return false; }
         });
 
         return true;
@@ -65,9 +66,12 @@ public class PhotoGallery extends AppCompatActivity
         setContentView(R.layout.gallery_activity);
 
         //Прочитать с локального файла api_key для запросов на flickr.com
-        flickr_api_key = readFile("flickr_api_key.txt");
+        flickr_api_key = IOFile.readFile(this, "flickr_api_key.txt");
 
-        adapter = new RVAdapter(this);
+        //Получить ссылку на БД
+        photos_db = PhotosDB.getDatabase(this);
+
+        adapter = new RVAdapter(this, this);
         list_view = findViewById(R.id.recyclerView);
 
         GridLayoutManager layout_manager = new GridLayoutManager(this, 3);
@@ -75,76 +79,96 @@ public class PhotoGallery extends AppCompatActivity
         list_view.setLayoutManager(layout_manager);
         list_view.setAdapter(adapter);
 
+        //Запросить изображения с flickr.com
         getPhotosFromFlickr();
+    }
+
+    //Возврат в главное activity
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+
+        boolean is_removed = intent.getBooleanExtra("is_removed", false);
+
+        //Если произошло удаление фото из БД, то удалить данное фото из списка
+        if (is_removed) {
+            int position = intent.getIntExtra("position", 0);
+
+            photos.remove(position);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    //Вызывается из RVAdapter при нажатии на элемент списка
+    @Override
+    public void onClick(View view) {
+        int position = (int) view.getTag();
+        Intent intent = new Intent(this, FullPhoto.class);
+        Gson gson = new Gson();
+
+        intent.putExtra("photo", gson.toJson(photos.get(position)));
+        intent.putExtra("position", position);
+
+        startActivityForResult(intent, 1);
+    }
+
+    //Вызывается после выбора какого-либо пункта toolbar'а
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        String action = item.getTitle().toString();
+
+        if ("Загрузить из БД".equals(action)) {
+            getPhotosFromDB();
+        }
+        else {
+            getPhotosFromFlickr();
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     //Асинхронный запрос на flickr.com для получения общедоступных изображений
     public void getPhotosFromFlickr() {
-        ServiceAPI.getFlickrAPI().getRecent(flickr_api_key).enqueue(new Callback<FlickrPhotos>() {
-            @Override
-            public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
-                photos = response.body().getPhotos().getPhoto();
+        if (flickr_api_key != "") {
+            ServiceAPI.getFlickrAPI().getRecent(flickr_api_key).enqueue(new Callback<FlickrPhotos>() {
+                @Override
+                public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
+                    photos = response.body().getPhotos().getPhoto();
+                    adapter.updatePhotoList(photos);
+                }
 
-                //Обновить список с изображениями
-                adapter.setContent(createImageUrls(photos));
-                adapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onFailure(Call<FlickrPhotos> call, Throwable t) {
-                Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
-            }
-        });
+                @Override
+                public void onFailure(Call<FlickrPhotos> call, Throwable t) {
+                    Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
     //Асинхронный запрос на flickr.com для получения общедоступных изображений, чьи атрибуты совпадают с введенным текстом
     public void getSearchPhotosFromFlickr(String text) {
-        ServiceAPI.getFlickrAPI().getSearchPhotos(flickr_api_key, text).enqueue(new Callback<FlickrPhotos>() {
-            @Override
-            public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
-                photos = response.body().getPhotos().getPhoto();
+        if (flickr_api_key != "") {
+            ServiceAPI.getFlickrAPI().getSearchPhotos(flickr_api_key, text).enqueue(new Callback<FlickrPhotos>() {
+                @Override
+                public void onResponse(Call<FlickrPhotos> call, Response<FlickrPhotos> response) {
+                    photos = response.body().getPhotos().getPhoto();
+                    adapter.updatePhotoList(photos);
+                }
 
-                //Обновить список с изображениями
-                adapter.setContent(createImageUrls(photos));
-                adapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onFailure(Call<FlickrPhotos> call, Throwable t) {
-                Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
-            }
-        });
+                @Override
+                public void onFailure(Call<FlickrPhotos> call, Throwable t) {
+                    Toast.makeText(PhotoGallery.this, "An error occurred during networking", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
-    //Сформировать список url'ов изображений
-    public List<String> createImageUrls(List<Photo> photos) {
-        List<String> image_ursl = new ArrayList<>();
-        int photo_size = photos.size();
-
-        for (int i = 0; i < photo_size; i++) {
-            Photo photo = photos.get(i);
-            image_ursl.add(String.format("https://live.staticflickr.com/%s/%s_%s_w.jpg", photo.getServer(), photo.getId(), photo.getSecret()));
-        }
-
-        return image_ursl;
-    }
-
-    //Открыть файл
-    public String readFile(String file_name) {
-        String data = "";
-
-        try {
-            FileInputStream fin = openFileInput(file_name);
-            byte[] bytes = new byte[fin.available()];
-
-            fin.read(bytes);
-            data = new String(bytes);
-
-            if (fin != null) fin.close();
-        } catch (IOException ex) {
-            Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-
-        return data;
+    //Получить изображния из БД
+    public void getPhotosFromDB() {
+        photos_db.request(
+                    () -> photos = photos_db.photoDao().LoadAll(),
+                    () -> adapter.updatePhotoList(photos)
+                );
     }
 }
